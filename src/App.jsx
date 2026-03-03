@@ -2,37 +2,12 @@ import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
 const T = {
-  // Layout
-  bg: "#f3f2f2",
-  surface: "#ffffff",
-  card: "#ffffff",
-  border: "#dddbda",
-  borderLight: "#e5e5e5",
-  // Nav
-  navBg: "#0176d3",
-  navDark: "#014486",
-  navText: "#ffffff",
-  navHover: "#0176d3",
-  // Brand
-  accent: "#0176d3",
-  accentDark: "#014486",
-  accentLight: "#1b96ff",
-  accentBg: "#e8f4fd",
-  // Text
-  text: "#181818",
-  textMuted: "#514f4d",
-  textDim: "#706e6b",
-  // Status
-  success: "#2e844a",
-  successBg: "#eaf5ea",
-  warning: "#dd7a01",
-  warningBg: "#fef0d0",
-  danger: "#ba0517",
-  dangerBg: "#fceeed",
-  info: "#0176d3",
-  infoBg: "#e8f4fd",
-  gold: "#dd7a01",
-  // Header
+  bg: "#f3f2f2", surface: "#ffffff", card: "#ffffff", border: "#dddbda", borderLight: "#e5e5e5",
+  navBg: "#0176d3", navDark: "#014486", navText: "#ffffff",
+  accent: "#0176d3", accentDark: "#014486", accentLight: "#1b96ff", accentBg: "#e8f4fd",
+  text: "#181818", textMuted: "#514f4d", textDim: "#706e6b",
+  success: "#2e844a", successBg: "#eaf5ea", warning: "#dd7a01", warningBg: "#fef0d0",
+  danger: "#ba0517", dangerBg: "#fceeed", info: "#0176d3", infoBg: "#e8f4fd", gold: "#dd7a01",
   headerBg: "#032d60",
 };
 
@@ -43,7 +18,14 @@ function displayName(e) {
   return e.type === "Entreprise" ? (e.company_name || "Sans nom") : `${e.prenom || ""} ${e.nom || ""}`.trim() || "Sans nom";
 }
 
-// ─── BADGE ────────────────────────────────────────────────────────────────────
+// ─── ROLE HELPERS ─────────────────────────────────────────────────────────────
+const ROLES = { admin: "Administrateur", editor: "Éditeur", read_only: "Lecture seule" };
+const ROLE_COLOR = { admin: "red", editor: "blue", read_only: "gray" };
+function canEdit(role) { return role === "admin" || role === "editor"; }
+function canDelete(role) { return role === "admin"; }
+function canManageUsers(role) { return role === "admin"; }
+
+// ─── UI PRIMITIVES ────────────────────────────────────────────────────────────
 function Badge({ label, color }) {
   const map = {
     blue: { bg: T.accentBg, text: T.accent, border: "#9ec5e8" },
@@ -54,12 +36,9 @@ function Badge({ label, color }) {
     gold: { bg: "#fef7e6", text: T.gold, border: "#f5c97e" },
   };
   const c = map[color] || map.gray;
-  return (
-    <span style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 10px", fontSize: 11, fontWeight: 700, letterSpacing: "0.03em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{label}</span>
-  );
+  return <span style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: 4, padding: "2px 10px", fontSize: 11, fontWeight: 700, letterSpacing: "0.03em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{label}</span>;
 }
 
-// ─── STAT CARD ────────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, color, onClick }) {
   return (
     <div onClick={onClick} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "20px 24px", borderTop: `3px solid ${color || T.accent}`, boxShadow: "0 2px 4px rgba(0,0,0,0.06)", cursor: onClick ? "pointer" : "default" }}>
@@ -75,49 +54,44 @@ function StatCard({ icon, label, value, sub, color, onClick }) {
   );
 }
 
-// ─── INPUT ────────────────────────────────────────────────────────────────────
-function Input({ label, value, onChange, type = "text", required, placeholder }) {
+function Input({ label, value, onChange, type = "text", required, placeholder, disabled }) {
   const [focused, setFocused] = useState(false);
   return (
     <div style={{ marginBottom: 14 }}>
       {label && <label style={{ display: "block", color: T.textMuted, fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{label}{required && <span style={{ color: T.danger }}> *</span>}</label>}
-      <input type={type} value={value ?? ""} onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
+      <input type={type} value={value ?? ""} onChange={e => onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-        style={{ width: "100%", background: T.surface, border: `1px solid ${focused ? T.accent : T.border}`, borderRadius: 4, padding: "8px 12px", color: T.text, fontSize: 13, outline: "none", boxSizing: "border-box", boxShadow: focused ? `0 0 0 3px ${T.accentBg}` : "none", transition: "border-color 0.15s, box-shadow 0.15s" }} />
+        style={{ width: "100%", background: disabled ? "#f3f2f2" : T.surface, border: `1px solid ${focused ? T.accent : T.border}`, borderRadius: 4, padding: "8px 12px", color: T.text, fontSize: 13, outline: "none", boxSizing: "border-box", boxShadow: focused ? `0 0 0 3px ${T.accentBg}` : "none", transition: "border-color 0.15s, box-shadow 0.15s", cursor: disabled ? "not-allowed" : "auto" }} />
     </div>
   );
 }
 
-// ─── SELECT ───────────────────────────────────────────────────────────────────
-function Select({ label, value, onChange, options, required }) {
+function Select({ label, value, onChange, options, required, disabled }) {
   const [focused, setFocused] = useState(false);
   return (
     <div style={{ marginBottom: 14 }}>
       {label && <label style={{ display: "block", color: T.textMuted, fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{label}{required && <span style={{ color: T.danger }}> *</span>}</label>}
-      <select value={value ?? ""} onChange={e => onChange(e.target.value)}
+      <select value={value ?? ""} onChange={e => onChange(e.target.value)} disabled={disabled}
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-        style={{ width: "100%", background: T.surface, border: `1px solid ${focused ? T.accent : T.border}`, borderRadius: 4, padding: "8px 12px", color: T.text, fontSize: 13, outline: "none", boxSizing: "border-box", boxShadow: focused ? `0 0 0 3px ${T.accentBg}` : "none", transition: "border-color 0.15s" }}>
+        style={{ width: "100%", background: disabled ? "#f3f2f2" : T.surface, border: `1px solid ${focused ? T.accent : T.border}`, borderRadius: 4, padding: "8px 12px", color: T.text, fontSize: 13, outline: "none", boxSizing: "border-box", boxShadow: focused ? `0 0 0 3px ${T.accentBg}` : "none" }}>
         {options.map(o => <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>)}
       </select>
     </div>
   );
 }
 
-// ─── TEXTAREA ─────────────────────────────────────────────────────────────────
-function Textarea({ label, value, onChange, rows = 3 }) {
+function Textarea({ label, value, onChange, rows = 3, disabled }) {
   const [focused, setFocused] = useState(false);
   return (
     <div style={{ marginBottom: 14 }}>
       {label && <label style={{ display: "block", color: T.textMuted, fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{label}</label>}
-      <textarea value={value ?? ""} onChange={e => onChange(e.target.value)} rows={rows}
+      <textarea value={value ?? ""} onChange={e => onChange(e.target.value)} rows={rows} disabled={disabled}
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-        style={{ width: "100%", background: T.surface, border: `1px solid ${focused ? T.accent : T.border}`, borderRadius: 4, padding: "8px 12px", color: T.text, fontSize: 13, outline: "none", boxSizing: "border-box", resize: "vertical", boxShadow: focused ? `0 0 0 3px ${T.accentBg}` : "none", transition: "border-color 0.15s" }} />
+        style={{ width: "100%", background: disabled ? "#f3f2f2" : T.surface, border: `1px solid ${focused ? T.accent : T.border}`, borderRadius: 4, padding: "8px 12px", color: T.text, fontSize: 13, outline: "none", boxSizing: "border-box", resize: "vertical", boxShadow: focused ? `0 0 0 3px ${T.accentBg}` : "none" }} />
     </div>
   );
 }
 
-// ─── BUTTON ───────────────────────────────────────────────────────────────────
 function Btn({ children, onClick, variant = "primary", small, disabled, icon }) {
   const styles = {
     primary: { background: T.accent, color: "#fff", border: `1px solid ${T.accentDark}` },
@@ -125,27 +99,22 @@ function Btn({ children, onClick, variant = "primary", small, disabled, icon }) 
     neutral: { background: T.surface, color: T.text, border: `1px solid ${T.border}` },
     danger: { background: T.danger, color: "#fff", border: `1px solid ${T.danger}` },
     ghost: { background: "transparent", color: T.accent, border: "none" },
+    success: { background: T.success, color: "#fff", border: `1px solid ${T.success}` },
   };
   return (
-    <button onClick={onClick} disabled={disabled} style={{
-      ...styles[variant], borderRadius: 4, padding: small ? "4px 12px" : "8px 16px",
-      fontSize: small ? 12 : 13, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer",
-      opacity: disabled ? 0.6 : 1, display: "inline-flex", alignItems: "center", gap: 6,
-      boxShadow: variant === "primary" ? "0 1px 2px rgba(0,0,0,0.15)" : "none",
-      transition: "background 0.1s",
-    }}>{icon && <span>{icon}</span>}{children}</button>
+    <button onClick={onClick} disabled={disabled} style={{ ...styles[variant], borderRadius: 4, padding: small ? "4px 12px" : "8px 16px", fontSize: small ? 12 : 13, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.6 : 1, display: "inline-flex", alignItems: "center", gap: 6, boxShadow: variant === "primary" ? "0 1px 2px rgba(0,0,0,0.15)" : "none" }}>
+      {icon && <span>{icon}</span>}{children}
+    </button>
   );
 }
 
-// ─── MODAL ────────────────────────────────────────────────────────────────────
 function Modal({ title, onClose, children, wide }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{ background: T.card, borderRadius: 8, width: wide ? 820 : 560, maxWidth: "95vw", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", borderBottom: `1px solid ${T.border}`, background: "#f3f2f2", borderRadius: "8px 8px 0 0" }}>
           <h3 style={{ color: T.text, margin: 0, fontSize: 16, fontWeight: 700 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: T.textDim, fontSize: 20, cursor: "pointer", lineHeight: 1 }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: T.textDim, fontSize: 20, cursor: "pointer" }}>×</button>
         </div>
         <div style={{ padding: 24 }}>{children}</div>
       </div>
@@ -153,12 +122,10 @@ function Modal({ title, onClose, children, wide }) {
   );
 }
 
-// ─── SECTION TITLE ────────────────────────────────────────────────────────────
 function SectionTitle({ children }) {
   return <div style={{ color: T.text, fontWeight: 700, fontSize: 13, marginTop: 20, marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${T.borderLight}` }}>{children}</div>;
 }
 
-// ─── DETAIL ROW ───────────────────────────────────────────────────────────────
 function DetailRow({ label, value }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", padding: "8px 0", borderBottom: `1px solid ${T.borderLight}` }}>
@@ -168,7 +135,6 @@ function DetailRow({ label, value }) {
   );
 }
 
-// ─── SPINNER ──────────────────────────────────────────────────────────────────
 function Spinner() {
   return (
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: 80 }}>
@@ -178,17 +144,10 @@ function Spinner() {
   );
 }
 
-// ─── EMPTY STATE ─────────────────────────────────────────────────────────────
 function EmptyState({ icon, message }) {
-  return (
-    <div style={{ textAlign: "center", padding: "32px 16px", color: T.textDim }}>
-      <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontSize: 13 }}>{message}</div>
-    </div>
-  );
+  return <div style={{ textAlign: "center", padding: "32px 16px", color: T.textDim }}><div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div><div style={{ fontSize: 13 }}>{message}</div></div>;
 }
 
-// ─── PAGE HEADER ─────────────────────────────────────────────────────────────
 function PageHeader({ title, sub, actions }) {
   return (
     <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
@@ -201,8 +160,7 @@ function PageHeader({ title, sub, actions }) {
   );
 }
 
-// ─── RELATED LIST ─────────────────────────────────────────────────────────────
-function RelatedList({ title, icon, count, onAdd, addLabel, children, empty }) {
+function RelatedList({ title, icon, count, onAdd, addLabel, children, empty, readOnly }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, marginBottom: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", overflow: "hidden" }}>
@@ -213,19 +171,19 @@ function RelatedList({ title, icon, count, onAdd, addLabel, children, empty }) {
           <span style={{ background: T.accent, color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{count}</span>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {onAdd && !collapsed && <Btn small variant="neutral" onClick={e => { e.stopPropagation(); onAdd(); }}>{addLabel || "+ Nouveau"}</Btn>}
+          {onAdd && !collapsed && !readOnly && <Btn small variant="neutral" onClick={e => { e.stopPropagation(); onAdd(); }}>{addLabel || "+ Nouveau"}</Btn>}
           <span style={{ color: T.textDim, fontSize: 14 }}>{collapsed ? "▶" : "▼"}</span>
         </div>
       </div>
-      {!collapsed && <div style={{ padding: count === 0 ? 0 : "0 0 4px 0" }}>{count === 0 ? <EmptyState icon="📭" message={empty || "Aucun élément"} /> : children}</div>}
+      {!collapsed && <div>{count === 0 ? <EmptyState icon="📭" message={empty || "Aucun élément"} /> : children}</div>}
     </div>
   );
 }
 
-// ─── ACTIVITY ITEM ────────────────────────────────────────────────────────────
-function ActivityItem({ a, onEdit, onDelete }) {
+function ActivityItem({ a, onEdit, onDelete, readOnly }) {
   const [expanded, setExpanded] = useState(false);
   const typeIcon = { Courriel: "📧", Appel: "📞", Rencontre: "🤝", Tâche: "✅", Suivi: "🔔", Autre: "📝" }[a.type] || "📝";
+  const sColor = { "Terminé": "green", "Actif": "blue", "Planifiée": "orange", "Annulé": "gray" }[a.statut] || "gray";
   return (
     <div style={{ borderBottom: `1px solid ${T.borderLight}`, padding: "12px 16px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -234,7 +192,7 @@ function ActivityItem({ a, onEdit, onDelete }) {
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4, flexWrap: "wrap" }}>
               <span style={{ color: T.text, fontWeight: 600, fontSize: 13 }}>{a.desc_courte}</span>
-              <Badge label={a.statut} color={statutColor(a.statut)} />
+              <Badge label={a.statut} color={sColor} />
               <Badge label={a.type} color="blue" />
             </div>
             <div style={{ color: T.textMuted, fontSize: 12 }}>
@@ -251,10 +209,12 @@ function ActivityItem({ a, onEdit, onDelete }) {
             )}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 4, marginLeft: 12 }}>
-          <Btn variant="neutral" small onClick={() => onEdit(a)}>✏️</Btn>
-          <Btn variant="neutral" small onClick={() => onDelete(a.id)}>🗑️</Btn>
-        </div>
+        {!readOnly && (
+          <div style={{ display: "flex", gap: 4, marginLeft: 12 }}>
+            <Btn variant="neutral" small onClick={() => onEdit(a)}>✏️</Btn>
+            {onDelete && <Btn variant="neutral" small onClick={() => onDelete(a.id)}>🗑️</Btn>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -263,8 +223,256 @@ function ActivityItem({ a, onEdit, onDelete }) {
 function statutColor(s) { return { "Terminé": "green", "Actif": "blue", "Planifiée": "orange", "Annulé": "gray" }[s] || "gray"; }
 function typeColor(t) { return { "Entreprise": "blue", "Individu": "gold" }[t] || "gray"; }
 
+// ─── LOGIN PAGE ───────────────────────────────────────────────────────────────
+function LoginPage({ onLogin }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const login = async () => {
+    if (!email || !password) return setError("Veuillez entrer votre courriel et mot de passe.");
+    setLoading(true); setError("");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) setError("Courriel ou mot de passe incorrect.");
+    else onLogin();
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: T.headerBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ background: T.surface, borderRadius: 10, padding: "40px 48px", width: 400, boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🌿</div>
+          <h1 style={{ color: T.text, fontSize: 22, fontWeight: 900, margin: "0 0 4px 0" }}>GNR Farnham CRM</h1>
+          <div style={{ color: T.textMuted, fontSize: 13 }}>Energir Développement inc.</div>
+        </div>
+        {error && <div style={{ background: T.dangerBg, border: `1px solid ${T.danger}`, borderRadius: 4, padding: "10px 14px", color: T.danger, fontSize: 13, marginBottom: 16 }}>{error}</div>}
+        <Input label="Courriel" value={email} onChange={setEmail} type="email" placeholder="vous@energir.com" required />
+        <Input label="Mot de passe" value={password} onChange={setPassword} type="password" placeholder="••••••••" required />
+        <button
+          onClick={login} disabled={loading}
+          onKeyDown={e => e.key === "Enter" && login()}
+          style={{ width: "100%", background: T.accent, color: "#fff", border: "none", borderRadius: 4, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", marginTop: 8, opacity: loading ? 0.7 : 1 }}>
+          {loading ? "Connexion..." : "Se connecter"}
+        </button>
+        <div style={{ color: T.textDim, fontSize: 12, textAlign: "center", marginTop: 20 }}>
+          Accès restreint — contactez votre administrateur pour obtenir un compte.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MY PROFILE PAGE ──────────────────────────────────────────────────────────
+function MyProfilePage({ profile, onUpdate }) {
+  const [fullName, setFullName] = useState(profile?.full_name || "");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [pwConfirm, setPwConfirm] = useState("");
+  const [pwMsg, setPwMsg] = useState("");
+
+  const saveName = async () => {
+    setSaving(true); setMsg("");
+    const { error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", profile.id);
+    setSaving(false);
+    if (error) setMsg("Erreur: " + error.message);
+    else { setMsg("Profil mis à jour."); onUpdate({ ...profile, full_name: fullName }); }
+  };
+
+  const changePassword = async () => {
+    setPwMsg("");
+    if (!pwNew || !pwConfirm) return setPwMsg("Veuillez remplir tous les champs.");
+    if (pwNew !== pwConfirm) return setPwMsg("Les mots de passe ne correspondent pas.");
+    if (pwNew.length < 6) return setPwMsg("Le mot de passe doit contenir au moins 6 caractères.");
+    const { error } = await supabase.auth.updateUser({ password: pwNew });
+    if (error) setPwMsg("Erreur: " + error.message);
+    else { setPwMsg("Mot de passe mis à jour avec succès."); setPwCurrent(""); setPwNew(""); setPwConfirm(""); }
+  };
+
+  return (
+    <div>
+      <PageHeader title="Mon profil" sub="Gérer vos informations personnelles" />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, maxWidth: 900 }}>
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16, color: T.text }}>Informations du compte</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: "16px", background: T.accentBg, borderRadius: 8 }}>
+            <div style={{ width: 52, height: 52, borderRadius: "50%", background: T.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 20 }}>
+              {(profile?.full_name || profile?.email || "?")[0].toUpperCase()}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: T.text }}>{profile?.full_name || "Nom non défini"}</div>
+              <div style={{ color: T.textMuted, fontSize: 13 }}>{profile?.email}</div>
+              <div style={{ marginTop: 4 }}><Badge label={ROLES[profile?.role] || profile?.role} color={ROLE_COLOR[profile?.role] || "gray"} /></div>
+            </div>
+          </div>
+          <Input label="Nom complet" value={fullName} onChange={setFullName} placeholder="Prénom Nom" />
+          <Input label="Courriel" value={profile?.email || ""} onChange={() => {}} disabled />
+          {msg && <div style={{ color: msg.startsWith("Erreur") ? T.danger : T.success, fontSize: 13, marginBottom: 8 }}>{msg}</div>}
+          <Btn onClick={saveName} disabled={saving}>{saving ? "Enregistrement..." : "Enregistrer"}</Btn>
+        </div>
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16, color: T.text }}>Changer le mot de passe</div>
+          <Input label="Nouveau mot de passe" value={pwNew} onChange={setPwNew} type="password" placeholder="••••••••" />
+          <Input label="Confirmer le mot de passe" value={pwConfirm} onChange={setPwConfirm} type="password" placeholder="••••••••" />
+          {pwMsg && <div style={{ color: pwMsg.includes("succès") ? T.success : T.danger, fontSize: 13, marginBottom: 8 }}>{pwMsg}</div>}
+          <Btn onClick={changePassword}>Changer le mot de passe</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SETTINGS PAGE ────────────────────────────────────────────────────────────
+function SettingsPage({ currentProfile }) {
+  const [profiles, setProfiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteRole, setInviteRole] = useState("read_only");
+  const [invitePassword, setInvitePassword] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState("");
+
+  useEffect(() => {
+    supabase.from("profiles").select("*").order("created_at").then(({ data }) => { setProfiles(data || []); setLoading(false); });
+  }, []);
+
+  const updateRole = async (id, role) => {
+    await supabase.from("profiles").update({ role }).eq("id", id);
+    setProfiles(prev => prev.map(p => p.id === id ? { ...p, role } : p));
+  };
+
+  const toggleActive = async (id, active) => {
+    await supabase.from("profiles").update({ active }).eq("id", id);
+    setProfiles(prev => prev.map(p => p.id === id ? { ...p, active } : p));
+  };
+
+  const inviteUser = async () => {
+    if (!inviteEmail || !invitePassword) return setInviteMsg("Courriel et mot de passe requis.");
+    if (invitePassword.length < 6) return setInviteMsg("Le mot de passe doit contenir au moins 6 caractères.");
+    setInviting(true); setInviteMsg("");
+    const { data, error } = await supabase.auth.admin?.createUser
+      ? await supabase.auth.admin.createUser({ email: inviteEmail, password: invitePassword, email_confirm: true, user_metadata: { full_name: inviteName } })
+      : { data: null, error: { message: "La création d'utilisateurs nécessite la clé service_role. Veuillez créer l'utilisateur directement dans Supabase → Authentication → Users, puis lui assigner un rôle ici." } };
+    if (error) {
+      setInviteMsg("⚠️ " + error.message);
+    } else if (data?.user) {
+      await supabase.from("profiles").update({ role: inviteRole, full_name: inviteName }).eq("id", data.user.id);
+      const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
+      if (newProfile) setProfiles(prev => [...prev, newProfile]);
+      setInviteMsg("✅ Utilisateur créé avec succès.");
+      setInviteEmail(""); setInviteName(""); setInvitePassword(""); setInviteRole("read_only");
+    }
+    setInviting(false);
+  };
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div>
+      <PageHeader title="Paramètres" sub="Gestion des utilisateurs et des accès"
+        actions={<Btn onClick={() => setShowInvite(true)} icon="＋">Nouvel utilisateur</Btn>} />
+
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", marginBottom: 24 }}>
+        <div style={{ padding: "12px 16px", background: "#f3f2f2", borderBottom: `1px solid ${T.border}`, fontWeight: 700, fontSize: 13, color: T.text }}>
+          👥 Utilisateurs ({profiles.length})
+        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "#fafaf9" }}>
+              {["Utilisateur", "Courriel", "Rôle", "Statut", "Créé le", "Actions"].map(h => (
+                <th key={h} style={{ padding: "10px 16px", color: T.textMuted, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", borderBottom: `1px solid ${T.border}` }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {profiles.map((p, i) => (
+              <tr key={p.id} style={{ background: i % 2 === 0 ? T.surface : "#fafaf9" }}>
+                <td style={{ padding: "12px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: p.id === currentProfile?.id ? T.accent : "#637381", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                      {(p.full_name || p.email || "?")[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ color: T.text, fontWeight: 600, fontSize: 13 }}>{p.full_name || "—"}{p.id === currentProfile?.id && <span style={{ color: T.textMuted, fontSize: 11, marginLeft: 6 }}>(vous)</span>}</div>
+                    </div>
+                  </div>
+                </td>
+                <td style={{ padding: "12px 16px", color: T.text, fontSize: 13 }}>{p.email}</td>
+                <td style={{ padding: "12px 16px" }}>
+                  {p.id === currentProfile?.id ? (
+                    <Badge label={ROLES[p.role] || p.role} color={ROLE_COLOR[p.role] || "gray"} />
+                  ) : (
+                    <select value={p.role} onChange={e => updateRole(p.id, e.target.value)}
+                      style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 4, padding: "4px 8px", fontSize: 12, color: T.text, cursor: "pointer" }}>
+                      <option value="admin">Administrateur</option>
+                      <option value="editor">Éditeur</option>
+                      <option value="read_only">Lecture seule</option>
+                    </select>
+                  )}
+                </td>
+                <td style={{ padding: "12px 16px" }}>
+                  <Badge label={p.active ? "Actif" : "Inactif"} color={p.active ? "green" : "gray"} />
+                </td>
+                <td style={{ padding: "12px 16px", color: T.textMuted, fontSize: 12 }}>
+                  {p.created_at ? new Date(p.created_at).toLocaleDateString("fr-CA") : "—"}
+                </td>
+                <td style={{ padding: "12px 16px" }}>
+                  {p.id !== currentProfile?.id && (
+                    <Btn variant="neutral" small onClick={() => toggleActive(p.id, !p.active)}>
+                      {p.active ? "Désactiver" : "Activer"}
+                    </Btn>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Role legend */}
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 14 }}>📋 Description des rôles</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+          {[
+            { role: "admin", label: "Administrateur", perms: ["Créer, modifier, supprimer", "Gérer les utilisateurs", "Accès complet à toutes les sections"] },
+            { role: "editor", label: "Éditeur", perms: ["Créer et modifier", "Pas de suppression", "Accès complet en lecture"] },
+            { role: "read_only", label: "Lecture seule", perms: ["Consulter uniquement", "Aucune modification", "Aucune suppression"] },
+          ].map(r => (
+            <div key={r.role} style={{ background: "#fafaf9", border: `1px solid ${T.border}`, borderRadius: 6, padding: 16 }}>
+              <div style={{ marginBottom: 10 }}><Badge label={r.label} color={ROLE_COLOR[r.role]} /></div>
+              {r.perms.map(p => <div key={p} style={{ color: T.textMuted, fontSize: 12, marginBottom: 4 }}>• {p}</div>)}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {showInvite && (
+        <Modal title="Nouvel utilisateur" onClose={() => { setShowInvite(false); setInviteMsg(""); }}>
+          <div style={{ background: T.warningBg, border: `1px solid ${T.warning}`, borderRadius: 6, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: T.warning }}>
+            <b>Note :</b> Si la création échoue, créez l'utilisateur directement dans <b>Supabase → Authentication → Users</b>, puis assignez-lui un rôle dans le tableau ci-dessus.
+          </div>
+          <Input label="Nom complet" value={inviteName} onChange={setInviteName} placeholder="Prénom Nom" />
+          <Input label="Courriel *" value={inviteEmail} onChange={setInviteEmail} type="email" placeholder="utilisateur@energir.com" required />
+          <Input label="Mot de passe initial *" value={invitePassword} onChange={setInvitePassword} type="password" placeholder="Min. 6 caractères" required />
+          <Select label="Rôle" value={inviteRole} onChange={setInviteRole} options={[{ value: "read_only", label: "Lecture seule" }, { value: "editor", label: "Éditeur" }, { value: "admin", label: "Administrateur" }]} />
+          {inviteMsg && <div style={{ padding: "10px 14px", borderRadius: 4, background: inviteMsg.startsWith("✅") ? T.successBg : T.warningBg, color: inviteMsg.startsWith("✅") ? T.success : T.warning, fontSize: 13, marginBottom: 12 }}>{inviteMsg}</div>}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 16, borderTop: `1px solid ${T.border}` }}>
+            <Btn variant="neutral" onClick={() => { setShowInvite(false); setInviteMsg(""); }}>Annuler</Btn>
+            <Btn onClick={inviteUser} disabled={inviting}>{inviting ? "Création..." : "Créer l'utilisateur"}</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 // ─── ENTITY FORM ──────────────────────────────────────────────────────────────
-function EntityForm({ initial, onSave, onClose }) {
+function EntityForm({ initial, onSave, onClose, profiles }) {
   const blank = { type: "Entreprise", prenom: "", nom: "", company_name: "", company_number: "", no_tps: "", no_tvq: "", transporteur: "", adresse_no: "", adresse_rue: "", adresse_ville: "", adresse_province: "QC", adresse_code_postal: "", telephone1: "", telephone1_desc: "", telephone2: "", telephone2_desc: "", courriel: "", site_web: "", consentement: "Non obtenu", notes: "" };
   const [f, setF] = useState(initial ? { ...blank, ...initial } : blank);
   const [saving, setSaving] = useState(false);
@@ -383,7 +591,7 @@ function LieuForm({ initial, entityId, onSave, onClose }) {
 }
 
 // ─── ACTIVITE FORM ────────────────────────────────────────────────────────────
-function ActiviteForm({ initial, entityId, onSave, onClose }) {
+function ActiviteForm({ initial, entityId, onSave, onClose, profiles }) {
   const blank = { entity_id: entityId, date: today(), date_suivi: "", assigne_a: "", realise_p: "", statut: "Actif", type: "Appel", desc_courte: "", description: "", url: "", modif_par: "" };
   const [f, setF] = useState(initial ? { ...blank, ...initial } : blank);
   const [saving, setSaving] = useState(false);
@@ -397,6 +605,7 @@ function ActiviteForm({ initial, entityId, onSave, onClose }) {
     if (error) return alert("Erreur: " + error.message);
     onSave(row);
   };
+  const userOptions = [{ value: "", label: "— Sélectionner —" }, ...profiles.filter(p => p.active).map(p => ({ value: p.full_name || p.email, label: p.full_name || p.email }))];
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -404,8 +613,8 @@ function ActiviteForm({ initial, entityId, onSave, onClose }) {
         <Select label="Statut" value={f.statut} onChange={set("statut")} options={["Actif", "Planifiée", "Terminé", "Annulé"]} />
         <Input label="Date *" value={f.date} onChange={set("date")} type="date" />
         <Input label="Date de suivi" value={f.date_suivi} onChange={set("date_suivi")} type="date" />
-        <Input label="Assigné à" value={f.assigne_a} onChange={set("assigne_a")} placeholder="Nom de l'utilisateur" />
-        <Input label="Réalisé par" value={f.realise_p} onChange={set("realise_p")} placeholder="Nom de l'utilisateur" />
+        <Select label="Assigné à" value={f.assigne_a} onChange={set("assigne_a")} options={userOptions} />
+        <Select label="Réalisé par" value={f.realise_p} onChange={set("realise_p")} options={userOptions} />
       </div>
       <Input label="Objet / Description courte *" value={f.desc_courte} onChange={set("desc_courte")} />
       <Textarea label="Note / Description détaillée" value={f.description} onChange={set("description")} rows={5} />
@@ -518,7 +727,7 @@ function PrimeForm({ initial, entityId, onSave, onClose }) {
 }
 
 // ─── ENTITY DETAIL ────────────────────────────────────────────────────────────
-function EntityDetail({ entity, entities, lieux, activites, relations, documents, primes,
+function EntityDetail({ entity, entities, lieux, activites, relations, documents, primes, profiles, role,
   onEditEntity, onDeleteEntity, onSaveLieu, onDeleteLieu, onSaveActivite, onDeleteActivite,
   onSaveRelation, onDeleteRelation, onSaveDocument, onDeleteDocument, onSavePrime, onDeletePrime, onClose }) {
   const [modal, setModal] = useState(null);
@@ -530,8 +739,10 @@ function EntityDetail({ entity, entities, lieux, activites, relations, documents
   const totMat = eLieux.reduce((s, l) => s + (Number(l.tonnage_matiere) || 0), 0);
   const totDig = eLieux.reduce((s, l) => s + (Number(l.tonnage_digestat) || 0), 0);
   const totalPrimes = ePrimes.reduce((s, p) => s + (Number(p.montant) || 0), 0);
+  const ro = !canEdit(role);
 
   const handleDeleteActivite = async id => {
+    if (!canDelete(role)) return alert("Accès refusé.");
     if (!confirm("Supprimer cette activité ?")) return;
     await supabase.from("activites").delete().eq("id", id);
     onDeleteActivite(id);
@@ -539,14 +750,10 @@ function EntityDetail({ entity, entities, lieux, activites, relations, documents
 
   return (
     <div>
-      {/* Breadcrumb */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, fontSize: 13, color: T.textMuted }}>
         <button onClick={onClose} style={{ background: "none", border: "none", color: T.accent, cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0 }}>Entités</button>
-        <span>›</span>
-        <span style={{ color: T.text }}>{displayName(entity)}</span>
+        <span>›</span><span style={{ color: T.text }}>{displayName(entity)}</span>
       </div>
-
-      {/* Record header */}
       <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "20px 24px", marginBottom: 20, boxShadow: "0 2px 4px rgba(0,0,0,0.06)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
@@ -561,19 +768,15 @@ function EntityDetail({ entity, entities, lieux, activites, relations, documents
               </div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <Btn variant="neutral" onClick={() => onEditEntity(entity)}>✏️ Modifier</Btn>
-            <Btn variant="danger" onClick={async () => { if (!confirm("Supprimer ?")) return; await supabase.from("entities").delete().eq("id", entity.id); onDeleteEntity(entity.id); onClose(); }}>🗑️</Btn>
-          </div>
+          {!ro && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn variant="neutral" onClick={() => onEditEntity(entity)}>✏️ Modifier</Btn>
+              {canDelete(role) && <Btn variant="danger" onClick={async () => { if (!confirm("Supprimer ?")) return; await supabase.from("entities").delete().eq("id", entity.id); onDeleteEntity(entity.id); onClose(); }}>🗑️</Btn>}
+            </div>
+          )}
         </div>
-        {/* Quick stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginTop: 20, paddingTop: 20, borderTop: `1px solid ${T.borderLight}` }}>
-          {[
-            { label: "Tonnage matière", value: `${totMat.toLocaleString()} t`, icon: "🌿" },
-            { label: "Tonnage digestat", value: `${totDig.toLocaleString()} t`, icon: "♻️" },
-            { label: "Sites", value: eLieux.length, icon: "📍" },
-            { label: "Primes", value: totalPrimes.toLocaleString("fr-CA", { style: "currency", currency: "CAD" }), icon: "💰" },
-          ].map(s => (
+          {[{ label: "Tonnage matière", value: `${totMat.toLocaleString()} t`, icon: "🌿" }, { label: "Tonnage digestat", value: `${totDig.toLocaleString()} t`, icon: "♻️" }, { label: "Sites", value: eLieux.length, icon: "📍" }, { label: "Primes", value: totalPrimes.toLocaleString("fr-CA", { style: "currency", currency: "CAD" }), icon: "💰" }].map(s => (
             <div key={s.label} style={{ textAlign: "center" }}>
               <div style={{ fontSize: 20 }}>{s.icon}</div>
               <div style={{ color: T.text, fontWeight: 700, fontSize: 16 }}>{s.value}</div>
@@ -582,42 +785,28 @@ function EntityDetail({ entity, entities, lieux, activites, relations, documents
           ))}
         </div>
       </div>
-
-      {/* Two column layout */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16, alignItems: "start" }}>
-        {/* Left: details */}
-        <div>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-            <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 12 }}>Informations</div>
-            {entity.type === "Individu" && <DetailRow label="Prénom / Nom" value={`${entity.prenom || ""} ${entity.nom || ""}`} />}
-            {entity.company_name && <DetailRow label="Entreprise" value={entity.company_name} />}
-            {entity.company_number && <DetailRow label="No d'entreprise" value={entity.company_number} />}
-            {entity.no_tps && <DetailRow label="No TPS" value={entity.no_tps} />}
-            {entity.no_tvq && <DetailRow label="No TVQ" value={entity.no_tvq} />}
-            {entity.transporteur && <DetailRow label="Transporteur" value={entity.transporteur} />}
-            <DetailRow label="Adresse" value={[entity.adresse_no, entity.adresse_rue, entity.adresse_ville, entity.adresse_province, entity.adresse_code_postal].filter(Boolean).join(" ")} />
-            {entity.telephone1 && <DetailRow label={`Tél. (${entity.telephone1_desc || "principal"})`} value={entity.telephone1} />}
-            {entity.telephone2 && <DetailRow label={`Tél. (${entity.telephone2_desc || "secondaire"})`} value={entity.telephone2} />}
-            {entity.courriel && <DetailRow label="Courriel" value={entity.courriel} />}
-            {entity.site_web && <DetailRow label="Site web" value={entity.site_web} />}
-            {entity.type === "Individu" && <DetailRow label="Consentement" value={entity.consentement} />}
-            {entity.notes && <DetailRow label="Notes" value={entity.notes} />}
-          </div>
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: T.text, marginBottom: 12 }}>Informations</div>
+          {entity.type === "Individu" && <DetailRow label="Prénom / Nom" value={`${entity.prenom || ""} ${entity.nom || ""}`} />}
+          {entity.company_name && <DetailRow label="Entreprise" value={entity.company_name} />}
+          {entity.company_number && <DetailRow label="No d'entreprise" value={entity.company_number} />}
+          {entity.no_tps && <DetailRow label="No TPS" value={entity.no_tps} />}
+          {entity.no_tvq && <DetailRow label="No TVQ" value={entity.no_tvq} />}
+          {entity.transporteur && <DetailRow label="Transporteur" value={entity.transporteur} />}
+          <DetailRow label="Adresse" value={[entity.adresse_no, entity.adresse_rue, entity.adresse_ville, entity.adresse_province, entity.adresse_code_postal].filter(Boolean).join(" ")} />
+          {entity.telephone1 && <DetailRow label={`Tél. (${entity.telephone1_desc || "principal"})`} value={entity.telephone1} />}
+          {entity.telephone2 && <DetailRow label={`Tél. (${entity.telephone2_desc || "secondaire"})`} value={entity.telephone2} />}
+          {entity.courriel && <DetailRow label="Courriel" value={entity.courriel} />}
+          {entity.site_web && <DetailRow label="Site web" value={entity.site_web} />}
+          {entity.type === "Individu" && <DetailRow label="Consentement" value={entity.consentement} />}
+          {entity.notes && <DetailRow label="Notes" value={entity.notes} />}
         </div>
-
-        {/* Right: related lists */}
         <div>
-          {/* ACTIVITÉS */}
-          <RelatedList title="Activités" icon="📅" count={eActivites.length} onAdd={() => setModal({ type: "activite" })} addLabel="+ Nouvelle activité" empty="Aucune activité enregistrée">
-            {eActivites.map(a => (
-              <ActivityItem key={a.id} a={a}
-                onEdit={a => setModal({ type: "activite", item: a })}
-                onDelete={handleDeleteActivite} />
-            ))}
+          <RelatedList title="Activités" icon="📅" count={eActivites.length} onAdd={!ro ? () => setModal({ type: "activite" }) : null} addLabel="+ Nouvelle activité" empty="Aucune activité" readOnly={ro}>
+            {eActivites.map(a => <ActivityItem key={a.id} a={a} onEdit={a => setModal({ type: "activite", item: a })} onDelete={canDelete(role) ? handleDeleteActivite : null} readOnly={ro} />)}
           </RelatedList>
-
-          {/* LIEUX */}
-          <RelatedList title="Lieux de retrait / dépôt" icon="📍" count={eLieux.length} onAdd={() => setModal({ type: "lieu" })} addLabel="+ Nouveau lieu" empty="Aucun lieu enregistré">
+          <RelatedList title="Lieux de retrait / dépôt" icon="📍" count={eLieux.length} onAdd={!ro ? () => setModal({ type: "lieu" }) : null} addLabel="+ Nouveau lieu" empty="Aucun lieu" readOnly={ro}>
             {eLieux.map(l => (
               <div key={l.id} style={{ borderBottom: `1px solid ${T.borderLight}`, padding: "12px 16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -637,17 +826,17 @@ function EntityDetail({ entity, entities, lieux, activites, relations, documents
                       {l.hectares && <span style={{ color: T.textMuted, fontSize: 12 }}>🌾 {l.hectares} ha</span>}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <Btn variant="neutral" small onClick={() => setModal({ type: "lieu", item: l })}>✏️</Btn>
-                    <Btn variant="neutral" small onClick={async () => { if (!confirm("Supprimer ?")) return; await supabase.from("lieux").delete().eq("id", l.id); onDeleteLieu(l.id); }}>🗑️</Btn>
-                  </div>
+                  {!ro && (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <Btn variant="neutral" small onClick={() => setModal({ type: "lieu", item: l })}>✏️</Btn>
+                      {canDelete(role) && <Btn variant="neutral" small onClick={async () => { if (!confirm("Supprimer ?")) return; await supabase.from("lieux").delete().eq("id", l.id); onDeleteLieu(l.id); }}>🗑️</Btn>}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </RelatedList>
-
-          {/* RELATIONS */}
-          <RelatedList title="Relations" icon="🤝" count={eRelations.length} onAdd={() => setModal({ type: "relation" })} addLabel="+ Nouvelle relation" empty="Aucune relation enregistrée">
+          <RelatedList title="Relations" icon="🤝" count={eRelations.length} onAdd={!ro ? () => setModal({ type: "relation" }) : null} addLabel="+ Nouvelle relation" empty="Aucune relation" readOnly={ro}>
             {eRelations.map(r => {
               const otherId = r.entity_a_id === entity.id ? r.entity_b_id : r.entity_a_id;
               const other = entities.find(e => e.id === otherId);
@@ -659,38 +848,35 @@ function EntityDetail({ entity, entities, lieux, activites, relations, documents
                     {r.description && <div style={{ color: T.textMuted, fontSize: 12, marginTop: 4 }}>{r.description}</div>}
                     <div style={{ color: T.textDim, fontSize: 12, marginTop: 3 }}>Depuis: {r.date_debut}{r.date_fin ? ` → ${r.date_fin}` : ""}</div>
                   </div>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <Btn variant="neutral" small onClick={() => setModal({ type: "relation", item: r })}>✏️</Btn>
-                    <Btn variant="neutral" small onClick={async () => { if (!confirm("Supprimer ?")) return; await supabase.from("relations").delete().eq("id", r.id); onDeleteRelation(r.id); }}>🗑️</Btn>
-                  </div>
+                  {!ro && (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <Btn variant="neutral" small onClick={() => setModal({ type: "relation", item: r })}>✏️</Btn>
+                      {canDelete(role) && <Btn variant="neutral" small onClick={async () => { if (!confirm("Supprimer ?")) return; await supabase.from("relations").delete().eq("id", r.id); onDeleteRelation(r.id); }}>🗑️</Btn>}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </RelatedList>
-
-          {/* DOCUMENTS */}
-          <RelatedList title="Documents" icon="📄" count={eDocs.length} onAdd={() => setModal({ type: "document" })} addLabel="+ Nouveau document" empty="Aucun document enregistré">
+          <RelatedList title="Documents" icon="📄" count={eDocs.length} onAdd={!ro ? () => setModal({ type: "document" }) : null} addLabel="+ Nouveau document" empty="Aucun document" readOnly={ro}>
             {eDocs.map(d => (
               <div key={d.id} style={{ borderBottom: `1px solid ${T.borderLight}`, padding: "12px 16px", display: "flex", justifyContent: "space-between" }}>
                 <div>
-                  <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-                    <Badge label={d.type_doc} color="blue" />
-                    {d.actif ? <Badge label="Actif" color="green" /> : <Badge label="Inactif" color="gray" />}
-                  </div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 4 }}><Badge label={d.type_doc} color="blue" />{d.actif ? <Badge label="Actif" color="green" /> : <Badge label="Inactif" color="gray" />}</div>
                   <div style={{ color: T.text, fontSize: 13, fontWeight: 600 }}>{d.file_name || "Fichier non défini"}</div>
                   {d.echeance && <div style={{ color: T.warning, fontSize: 12, marginTop: 3 }}>⏰ Échéance: {d.echeance}</div>}
                   {d.description && <div style={{ color: T.textMuted, fontSize: 12, marginTop: 3 }}>{d.description}</div>}
                 </div>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <Btn variant="neutral" small onClick={() => setModal({ type: "document", item: d })}>✏️</Btn>
-                  <Btn variant="neutral" small onClick={async () => { if (!confirm("Supprimer ?")) return; await supabase.from("documents").delete().eq("id", d.id); onDeleteDocument(d.id); }}>🗑️</Btn>
-                </div>
+                {!ro && (
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <Btn variant="neutral" small onClick={() => setModal({ type: "document", item: d })}>✏️</Btn>
+                    {canDelete(role) && <Btn variant="neutral" small onClick={async () => { if (!confirm("Supprimer ?")) return; await supabase.from("documents").delete().eq("id", d.id); onDeleteDocument(d.id); }}>🗑️</Btn>}
+                  </div>
+                )}
               </div>
             ))}
           </RelatedList>
-
-          {/* PRIMES */}
-          <RelatedList title="Primes" icon="💰" count={ePrimes.length} onAdd={() => setModal({ type: "prime" })} addLabel="+ Nouvelle prime" empty="Aucune prime enregistrée">
+          <RelatedList title="Primes" icon="💰" count={ePrimes.length} onAdd={!ro ? () => setModal({ type: "prime" }) : null} addLabel="+ Nouvelle prime" empty="Aucune prime" readOnly={ro}>
             {ePrimes.map(p => (
               <div key={p.id} style={{ borderBottom: `1px solid ${T.borderLight}`, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
@@ -698,19 +884,20 @@ function EntityDetail({ entity, entities, lieux, activites, relations, documents
                   <span style={{ color: T.textMuted, fontSize: 12, marginLeft: 12 }}>{p.date}</span>
                   {p.description && <div style={{ color: T.textMuted, fontSize: 12, marginTop: 3 }}>{p.description}</div>}
                 </div>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <Btn variant="neutral" small onClick={() => setModal({ type: "prime", item: p })}>✏️</Btn>
-                  <Btn variant="neutral" small onClick={async () => { if (!confirm("Supprimer ?")) return; await supabase.from("primes").delete().eq("id", p.id); onDeletePrime(p.id); }}>🗑️</Btn>
-                </div>
+                {!ro && (
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <Btn variant="neutral" small onClick={() => setModal({ type: "prime", item: p })}>✏️</Btn>
+                    {canDelete(role) && <Btn variant="neutral" small onClick={async () => { if (!confirm("Supprimer ?")) return; await supabase.from("primes").delete().eq("id", p.id); onDeletePrime(p.id); }}>🗑️</Btn>}
+                  </div>
+                )}
               </div>
             ))}
             {ePrimes.length > 0 && <div style={{ padding: "10px 16px", textAlign: "right", color: T.text, fontWeight: 700 }}>Total: {totalPrimes.toLocaleString("fr-CA", { style: "currency", currency: "CAD" })}</div>}
           </RelatedList>
         </div>
       </div>
-
       {modal?.type === "lieu" && <Modal title={modal.item ? "Modifier lieu" : "Nouveau lieu"} onClose={() => setModal(null)} wide><LieuForm initial={modal.item} entityId={entity.id} onSave={l => { onSaveLieu(l); setModal(null); }} onClose={() => setModal(null)} /></Modal>}
-      {modal?.type === "activite" && <Modal title={modal.item ? "Modifier activité" : "Nouvelle activité"} onClose={() => setModal(null)} wide><ActiviteForm initial={modal.item} entityId={entity.id} onSave={a => { onSaveActivite(a); setModal(null); }} onClose={() => setModal(null)} /></Modal>}
+      {modal?.type === "activite" && <Modal title={modal.item ? "Modifier activité" : "Nouvelle activité"} onClose={() => setModal(null)} wide><ActiviteForm initial={modal.item} entityId={entity.id} profiles={profiles} onSave={a => { onSaveActivite(a); setModal(null); }} onClose={() => setModal(null)} /></Modal>}
       {modal?.type === "relation" && <Modal title={modal.item ? "Modifier relation" : "Nouvelle relation"} onClose={() => setModal(null)}><RelationForm initial={modal.item} entityId={entity.id} entities={entities} onSave={r => { onSaveRelation(r); setModal(null); }} onClose={() => setModal(null)} /></Modal>}
       {modal?.type === "document" && <Modal title={modal.item ? "Modifier document" : "Nouveau document"} onClose={() => setModal(null)}><DocumentForm initial={modal.item} entityId={entity.id} onSave={d => { onSaveDocument(d); setModal(null); }} onClose={() => setModal(null)} /></Modal>}
       {modal?.type === "prime" && <Modal title={modal.item ? "Modifier prime" : "Nouvelle prime"} onClose={() => setModal(null)}><PrimeForm initial={modal.item} entityId={entity.id} onSave={p => { onSavePrime(p); setModal(null); }} onClose={() => setModal(null)} /></Modal>}
@@ -726,7 +913,6 @@ function Dashboard({ entities, lieux, activites, documents, primes, onNavigate }
   const docsEcheant = documents.filter(d => d.echeance && d.echeance <= new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10) && d.actif);
   const bioCount = {};
   lieux.forEach(l => (l.type_biomasse || []).forEach(b => { bioCount[b] = (bioCount[b] || 0) + 1; }));
-  const recActs = [...activites].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
   return (
     <div>
       <PageHeader title="Tableau de bord" sub="Projet GNR Farnham · Energir Développement inc." />
@@ -734,7 +920,7 @@ function Dashboard({ entities, lieux, activites, documents, primes, onNavigate }
         <StatCard icon="🏢" label="Entités actives" value={entities.length} sub={`${entities.filter(e=>e.type==="Entreprise").length} entreprises · ${entities.filter(e=>e.type==="Individu").length} individus`} color={T.accent} onClick={() => onNavigate("entities")} />
         <StatCard icon="📍" label="Sites enregistrés" value={lieux.length} color={T.warning} />
         <StatCard icon="🌿" label="Tonnage matière (t/an)" value={totalMat.toLocaleString()} color="#2e844a" />
-        <StatCard icon="♻️" label="Tonnage digestat (t/an)" value={totalDig.toLocaleString()} color="#0176d3" />
+        <StatCard icon="♻️" label="Tonnage digestat (t/an)" value={totalDig.toLocaleString()} color={T.accent} />
         <StatCard icon="📅" label="Activités planifiées" value={activites.filter(a=>a.statut==="Planifiée").length} color={T.warning} onClick={() => onNavigate("activites")} />
         <StatCard icon="⚡" label="En cours" value={activites.filter(a=>a.statut==="Actif").length} color={T.accent} />
         <StatCard icon="💰" label="Primes totales" value={totalPrimes.toLocaleString("fr-CA",{style:"currency",currency:"CAD"})} color={T.gold} />
@@ -742,7 +928,7 @@ function Dashboard({ entities, lieux, activites, documents, primes, onNavigate }
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", background: "#f3f2f2", borderBottom: `1px solid ${T.border}`, fontWeight: 700, fontSize: 13, color: T.text }}>🐄 Répartition de la biomasse</div>
+          <div style={{ padding: "12px 16px", background: "#f3f2f2", borderBottom: `1px solid ${T.border}`, fontWeight: 700, fontSize: 13 }}>🐄 Répartition de la biomasse</div>
           <div style={{ padding: 16 }}>
             {Object.entries(bioCount).map(([k, v]) => (
               <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -751,39 +937,32 @@ function Dashboard({ entities, lieux, activites, documents, primes, onNavigate }
                   <div style={{ width: 140, height: 8, background: T.borderLight, borderRadius: 4, overflow: "hidden" }}>
                     <div style={{ width: `${Math.min(100, (v / Math.max(...Object.values(bioCount))) * 100)}%`, height: "100%", background: T.accent, borderRadius: 4 }} />
                   </div>
-                  <span style={{ color: T.textMuted, fontSize: 12, minWidth: 50 }}>{v} site(s)</span>
+                  <span style={{ color: T.textMuted, fontSize: 12 }}>{v} site(s)</span>
                 </div>
               </div>
             ))}
-            {Object.keys(bioCount).length === 0 && <EmptyState icon="🌾" message="Aucune donnée de biomasse" />}
+            {Object.keys(bioCount).length === 0 && <EmptyState icon="🌾" message="Aucune donnée" />}
           </div>
         </div>
         <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", background: "#f3f2f2", borderBottom: `1px solid ${T.border}`, fontWeight: 700, fontSize: 13, color: T.text }}>📅 Activités récentes</div>
-          <div>
-            {recActs.map(a => (
-              <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: `1px solid ${T.borderLight}` }}>
-                <div>
-                  <div style={{ color: T.text, fontSize: 13, fontWeight: 600 }}>{a.desc_courte}</div>
-                  <div style={{ color: T.textDim, fontSize: 12 }}>{a.date} · {a.type}</div>
-                </div>
-                <Badge label={a.statut} color={statutColor(a.statut)} />
-              </div>
-            ))}
-            {activites.length === 0 && <EmptyState icon="📭" message="Aucune activité" />}
-          </div>
+          <div style={{ padding: "12px 16px", background: "#f3f2f2", borderBottom: `1px solid ${T.border}`, fontWeight: 700, fontSize: 13 }}>📅 Activités récentes</div>
+          {[...activites].sort((a,b) => b.date.localeCompare(a.date)).slice(0,6).map(a => (
+            <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: `1px solid ${T.borderLight}` }}>
+              <div><div style={{ color: T.text, fontSize: 13, fontWeight: 600 }}>{a.desc_courte}</div><div style={{ color: T.textDim, fontSize: 12 }}>{a.date} · {a.type}</div></div>
+              <Badge label={a.statut} color={statutColor(a.statut)} />
+            </div>
+          ))}
+          {activites.length === 0 && <EmptyState icon="📭" message="Aucune activité" />}
         </div>
         {docsEcheant.length > 0 && (
-          <div style={{ background: T.card, border: `1px solid ${T.danger}`, borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", overflow: "hidden" }}>
+          <div style={{ background: T.card, border: `1px solid ${T.danger}`, borderRadius: 8, overflow: "hidden" }}>
             <div style={{ padding: "12px 16px", background: T.dangerBg, borderBottom: `1px solid ${T.danger}`, fontWeight: 700, fontSize: 13, color: T.danger }}>⚠️ Documents échéant dans 30 jours</div>
-            <div>
-              {docsEcheant.map(d => (
-                <div key={d.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px", borderBottom: `1px solid ${T.borderLight}` }}>
-                  <span style={{ color: T.text, fontSize: 13 }}>{d.file_name || d.type_doc}</span>
-                  <span style={{ color: T.danger, fontSize: 12, fontWeight: 600 }}>Éch.: {d.echeance}</span>
-                </div>
-              ))}
-            </div>
+            {docsEcheant.map(d => (
+              <div key={d.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px", borderBottom: `1px solid ${T.borderLight}` }}>
+                <span style={{ color: T.text, fontSize: 13 }}>{d.file_name || d.type_doc}</span>
+                <span style={{ color: T.danger, fontSize: 12, fontWeight: 600 }}>Éch.: {d.echeance}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -793,30 +972,59 @@ function Dashboard({ entities, lieux, activites, documents, primes, onNavigate }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [profiles, setProfiles] = useState([]);
+  const [authLoading, setAuthLoading] = useState(true);
   const [entities, setEntities] = useState([]);
   const [lieux, setLieux] = useState([]);
   const [activites, setActivites] = useState([]);
   const [relations, setRelations] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [primes, setPrimes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [page, setPage] = useState("dashboard");
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [showEntityForm, setShowEntityForm] = useState(false);
   const [editingEntity, setEditingEntity] = useState(null);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("Tous");
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
+  // Auth listener
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) loadProfile(session.user.id);
+      else setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) loadProfile(session.user.id);
+      else { setProfile(null); setAuthLoading(false); }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadProfile = async (userId) => {
+    const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
+    setProfile(data);
+    setAuthLoading(false);
+  };
+
+  // Load all data once authenticated
+  useEffect(() => {
+    if (!session) return;
     async function loadAll() {
-      setLoading(true);
-      const [e, l, a, r, d, p] = await Promise.all([
+      setDataLoading(true);
+      const [e, l, a, r, d, p, pr] = await Promise.all([
         supabase.from("entities").select("*").is("deleted_at", null),
         supabase.from("lieux").select("*").is("deleted_at", null),
         supabase.from("activites").select("*"),
         supabase.from("relations").select("*"),
         supabase.from("documents").select("*"),
         supabase.from("primes").select("*"),
+        supabase.from("profiles").select("*").eq("active", true),
       ]);
       setEntities(e.data || []);
       setLieux(l.data || []);
@@ -824,10 +1032,11 @@ export default function App() {
       setRelations(r.data || []);
       setDocuments(d.data || []);
       setPrimes(p.data || []);
-      setLoading(false);
+      setProfiles(pr.data || []);
+      setDataLoading(false);
     }
     loadAll();
-  }, []);
+  }, [session]);
 
   const saveEntity = row => { setEntities(prev => prev.some(x => x.id === row.id) ? prev.map(x => x.id === row.id ? row : x) : [...prev, row]); setShowEntityForm(false); setEditingEntity(null); };
   const deleteEntity = id => setEntities(prev => prev.filter(x => x.id !== id));
@@ -842,51 +1051,87 @@ export default function App() {
   const savePrime = row => setPrimes(prev => prev.some(x => x.id === row.id) ? prev.map(x => x.id === row.id ? row : x) : [...prev, row]);
   const deletePrime = id => setPrimes(prev => prev.filter(x => x.id !== id));
 
+  const logout = async () => { await supabase.auth.signOut(); setPage("dashboard"); setSelectedEntity(null); };
+  const role = profile?.role || "read_only";
+
   const filteredEntities = entities.filter(e => {
     if (filterType !== "Tous" && e.type !== filterType) return false;
     const q = search.toLowerCase();
     return !q || displayName(e).toLowerCase().includes(q) || (e.courriel || "").toLowerCase().includes(q) || (e.adresse_ville || "").toLowerCase().includes(q);
   });
 
+  if (authLoading) return (
+    <div style={{ minHeight: "100vh", background: T.headerBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Spinner />
+    </div>
+  );
+
+  if (!session) return <LoginPage onLogin={() => {}} />;
+
   const NAV = [
     { id: "dashboard", icon: "⊞", label: "Accueil" },
     { id: "entities", icon: "🏢", label: "Entités" },
     { id: "activites", icon: "📅", label: "Activités" },
     { id: "rapports", icon: "📊", label: "Rapport" },
+    ...(canManageUsers(role) ? [{ id: "settings", icon: "⚙️", label: "Paramètres" }] : []),
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "'Salesforce Sans', 'Segoe UI', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
-      {/* Top nav bar */}
-      <div style={{ background: T.headerBg, height: 52, display: "flex", alignItems: "center", padding: "0 20px", gap: 0, flexShrink: 0, boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }}>
-        <div style={{ color: "#fff", fontWeight: 900, fontSize: 15, letterSpacing: "0.02em", marginRight: 32, display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "'Segoe UI', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
+      {/* Top nav */}
+      <div style={{ background: T.headerBg, height: 52, display: "flex", alignItems: "center", padding: "0 20px", gap: 0, flexShrink: 0, boxShadow: "0 2px 4px rgba(0,0,0,0.2)", position: "relative" }}>
+        <div style={{ color: "#fff", fontWeight: 900, fontSize: 15, marginRight: 32, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 20 }}>🌿</span> GNR Farnham CRM
         </div>
         {NAV.map(n => (
-          <button key={n.id} onClick={() => { setPage(n.id); setSelectedEntity(null); }} style={{ background: page === n.id ? "rgba(255,255,255,0.15)" : "transparent", border: "none", borderBottom: page === n.id ? "2px solid #fff" : "2px solid transparent", color: "#fff", padding: "0 16px", height: 52, fontSize: 13, fontWeight: page === n.id ? 700 : 400, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "background 0.1s" }}>
+          <button key={n.id} onClick={() => { setPage(n.id); setSelectedEntity(null); }} style={{ background: page === n.id ? "rgba(255,255,255,0.15)" : "transparent", border: "none", borderBottom: page === n.id ? "2px solid #fff" : "2px solid transparent", color: "#fff", padding: "0 16px", height: 52, fontSize: 13, fontWeight: page === n.id ? 700 : 400, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
             <span>{n.icon}</span> {n.label}
           </button>
         ))}
         <div style={{ flex: 1 }} />
-        <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }}>Energir Développement inc. · DEM017996</div>
+        {/* User menu */}
+        <div style={{ position: "relative" }}>
+          <button onClick={() => setShowUserMenu(x => !x)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 20, padding: "4px 12px 4px 6px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#fff" }}>
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: T.accentLight, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 13, color: T.headerBg }}>
+              {(profile?.full_name || profile?.email || "?")[0].toUpperCase()}
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{profile?.full_name || profile?.email}</span>
+            <span style={{ fontSize: 10 }}>▼</span>
+          </button>
+          {showUserMenu && (
+            <div style={{ position: "absolute", right: 0, top: 44, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6, width: 220, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", zIndex: 200 }}>
+              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${T.border}` }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{profile?.full_name || "—"}</div>
+                <div style={{ color: T.textMuted, fontSize: 12 }}>{profile?.email}</div>
+                <div style={{ marginTop: 6 }}><Badge label={ROLES[role] || role} color={ROLE_COLOR[role] || "gray"} /></div>
+              </div>
+              <button onClick={() => { setPage("profile"); setShowUserMenu(false); }} style={{ display: "block", width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", color: T.text, fontSize: 13, cursor: "pointer" }}>👤 Mon profil</button>
+              <button onClick={() => { logout(); setShowUserMenu(false); }} style={{ display: "block", width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", color: T.danger, fontSize: 13, cursor: "pointer", borderTop: `1px solid ${T.border}` }}>🚪 Déconnexion</button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Main content */}
+      {/* Click outside to close user menu */}
+      {showUserMenu && <div style={{ position: "fixed", inset: 0, zIndex: 100 }} onClick={() => setShowUserMenu(false)} />}
+
+      {/* Main */}
       <div style={{ flex: 1, overflow: "auto", padding: "24px 28px" }}>
-        {loading && <Spinner />}
+        {dataLoading && <Spinner />}
 
-        {!loading && page === "dashboard" && <Dashboard entities={entities} lieux={lieux} activites={activites} documents={documents} primes={primes} onNavigate={p => setPage(p)} />}
+        {!dataLoading && page === "dashboard" && <Dashboard entities={entities} lieux={lieux} activites={activites} documents={documents} primes={primes} onNavigate={p => setPage(p)} />}
 
-        {!loading && page === "entities" && !selectedEntity && (
+        {!dataLoading && page === "profile" && <MyProfilePage profile={profile} onUpdate={setProfile} />}
+
+        {!dataLoading && page === "settings" && canManageUsers(role) && <SettingsPage currentProfile={profile} />}
+
+        {!dataLoading && page === "entities" && !selectedEntity && (
           <div>
-            <PageHeader
-              title="Entités"
-              sub={`${filteredEntities.length} entité(s) · entreprises et individus`}
-              actions={<Btn onClick={() => { setEditingEntity(null); setShowEntityForm(true); }} icon="＋">Nouvelle entité</Btn>}
-            />
+            <PageHeader title="Entités" sub={`${filteredEntities.length} entité(s)`}
+              actions={canEdit(role) ? <Btn onClick={() => { setEditingEntity(null); setShowEntityForm(true); }} icon="＋">Nouvelle entité</Btn> : null} />
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
               <div style={{ flex: 1, position: "relative" }}>
-                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: T.textDim, fontSize: 14 }}>🔍</span>
+                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: T.textDim }}>🔍</span>
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher par nom, courriel, ville..."
                   style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 4, padding: "8px 12px 8px 34px", color: T.text, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
               </div>
@@ -896,12 +1141,11 @@ export default function App() {
                 ))}
               </div>
             </div>
-            {/* Table view */}
             <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#f3f2f2" }}>
-                    {["Nom", "Type", "Ville", "Téléphone", "Courriel", "Sites", "Tonnage matière", ""].map(h => (
+                    {["Nom","Type","Ville","Téléphone","Courriel","Sites","Tonnage matière",""].map(h => (
                       <th key={h} style={{ padding: "10px 14px", color: T.textMuted, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left", borderBottom: `1px solid ${T.border}`, whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
@@ -911,9 +1155,9 @@ export default function App() {
                     const eL = lieux.filter(l => l.entity_id === e.id);
                     const totMat = eL.reduce((s, l) => s + (Number(l.tonnage_matiere) || 0), 0);
                     return (
-                      <tr key={e.id} style={{ background: i % 2 === 0 ? T.surface : "#fafaf9", cursor: "pointer" }}
+                      <tr key={e.id} style={{ background: i%2===0 ? T.surface : "#fafaf9", cursor: "pointer" }}
                         onMouseEnter={ev => ev.currentTarget.style.background = T.accentBg}
-                        onMouseLeave={ev => ev.currentTarget.style.background = i % 2 === 0 ? T.surface : "#fafaf9"}
+                        onMouseLeave={ev => ev.currentTarget.style.background = i%2===0 ? T.surface : "#fafaf9"}
                         onClick={() => setSelectedEntity(e)}>
                         <td style={{ padding: "11px 14px" }}>
                           <span style={{ color: T.accent, fontWeight: 600, fontSize: 13 }}>{displayName(e)}</span>
@@ -926,7 +1170,7 @@ export default function App() {
                         <td style={{ padding: "11px 14px", color: T.text, fontSize: 13, textAlign: "center" }}>{eL.length}</td>
                         <td style={{ padding: "11px 14px", color: totMat > 0 ? T.success : T.textDim, fontSize: 13, fontWeight: totMat > 0 ? 700 : 400 }}>{totMat > 0 ? `${totMat.toLocaleString()} t` : "—"}</td>
                         <td style={{ padding: "11px 14px" }}>
-                          <Btn variant="ghost" small onClick={ev => { ev.stopPropagation(); setEditingEntity(e); setShowEntityForm(true); }}>✏️</Btn>
+                          {canEdit(role) && <Btn variant="ghost" small onClick={ev => { ev.stopPropagation(); setEditingEntity(e); setShowEntityForm(true); }}>✏️</Btn>}
                         </td>
                       </tr>
                     );
@@ -938,10 +1182,10 @@ export default function App() {
           </div>
         )}
 
-        {!loading && page === "entities" && selectedEntity && (
+        {!dataLoading && page === "entities" && selectedEntity && (
           <EntityDetail
             entity={entities.find(e => e.id === selectedEntity.id) || selectedEntity}
-            entities={entities} lieux={lieux} activites={activites} relations={relations} documents={documents} primes={primes}
+            entities={entities} lieux={lieux} activites={activites} relations={relations} documents={documents} primes={primes} profiles={profiles} role={role}
             onEditEntity={e => { setEditingEntity(e); setShowEntityForm(true); }}
             onDeleteEntity={id => { deleteEntity(id); setSelectedEntity(null); }}
             onSaveLieu={saveLieu} onDeleteLieu={deleteLieu}
@@ -953,7 +1197,7 @@ export default function App() {
           />
         )}
 
-        {!loading && page === "activites" && (
+        {!dataLoading && page === "activites" && (
           <div>
             <PageHeader title="Toutes les activités" sub={`${activites.length} activité(s) au total`} />
             {["Planifiée", "Actif", "Terminé", "Annulé"].map(statut => {
@@ -971,14 +1215,14 @@ export default function App() {
                       return (
                         <div key={a.id} style={{ borderBottom: `1px solid ${T.borderLight}`, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                           <div style={{ display: "flex", gap: 12 }}>
-                            <div style={{ fontSize: 22 }}>{{ Courriel: "📧", Appel: "📞", Rencontre: "🤝", Tâche: "✅", Suivi: "🔔", Autre: "📝" }[a.type] || "📝"}</div>
+                            <div style={{ fontSize: 22 }}>{{ Courriel:"📧",Appel:"📞",Rencontre:"🤝",Tâche:"✅",Suivi:"🔔",Autre:"📝" }[a.type]||"📝"}</div>
                             <div>
                               <div style={{ color: T.text, fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{a.desc_courte}</div>
                               <div style={{ color: T.textMuted, fontSize: 12 }}>
                                 {ent ? <span style={{ color: T.accent, fontWeight: 600, cursor: "pointer" }} onClick={() => { setSelectedEntity(ent); setPage("entities"); }}>{displayName(ent)}</span> : "—"}
                                 {" · "}{a.date}{a.assigne_a ? ` · ${a.assigne_a}` : ""}
                               </div>
-                              {a.description && <div style={{ color: T.textDim, fontSize: 12, marginTop: 4, fontStyle: "italic" }}>{a.description.slice(0, 120)}{a.description.length > 120 ? "..." : ""}</div>}
+                              {a.description && <div style={{ color: T.textDim, fontSize: 12, marginTop: 4, fontStyle: "italic" }}>{a.description.slice(0,120)}{a.description.length > 120 ? "..." : ""}</div>}
                             </div>
                           </div>
                           <Badge label={a.type} color="blue" />
@@ -993,7 +1237,7 @@ export default function App() {
           </div>
         )}
 
-        {!loading && page === "rapports" && (
+        {!dataLoading && page === "rapports" && (
           <div>
             <PageHeader title="Rapport de biomasse" sub="Synthèse par entité" />
             <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
@@ -1008,38 +1252,38 @@ export default function App() {
                 <tbody>
                   {entities.map((e, i) => {
                     const eL = lieux.filter(l => l.entity_id === e.id);
-                    const tMat = eL.reduce((s, l) => s + (Number(l.tonnage_matiere)||0), 0);
-                    const tDig = eL.reduce((s, l) => s + (Number(l.tonnage_digestat)||0), 0);
-                    const tCheptel = eL.reduce((s, l) => s + (Number(l.taille_cheptel)||0), 0);
-                    const tHect = eL.reduce((s, l) => s + (Number(l.hectares)||0), 0);
-                    const tPhos = eL.reduce((s, l) => s + (Number(l.capacite_phosphore)||0), 0);
-                    const bio = [...new Set(eL.flatMap(l => l.type_biomasse || []))].join(", ");
+                    const tMat = eL.reduce((s,l)=>s+(Number(l.tonnage_matiere)||0),0);
+                    const tDig = eL.reduce((s,l)=>s+(Number(l.tonnage_digestat)||0),0);
+                    const tCheptel = eL.reduce((s,l)=>s+(Number(l.taille_cheptel)||0),0);
+                    const tHect = eL.reduce((s,l)=>s+(Number(l.hectares)||0),0);
+                    const tPhos = eL.reduce((s,l)=>s+(Number(l.capacite_phosphore)||0),0);
+                    const bio = [...new Set(eL.flatMap(l=>l.type_biomasse||[]))].join(", ");
                     return (
-                      <tr key={e.id} style={{ background: i%2===0 ? T.surface : "#fafaf9", cursor: "pointer" }}
-                        onMouseEnter={ev => ev.currentTarget.style.background = T.accentBg}
-                        onMouseLeave={ev => ev.currentTarget.style.background = i%2===0 ? T.surface : "#fafaf9"}
-                        onClick={() => { setSelectedEntity(e); setPage("entities"); }}>
-                        <td style={{ padding: "10px 14px", color: T.accent, fontWeight: 600 }}>{displayName(e)}</td>
-                        <td style={{ padding: "10px 14px" }}><Badge label={e.type} color={typeColor(e.type)} /></td>
-                        <td style={{ padding: "10px 14px", color: T.text }}>{e.adresse_ville || "—"}</td>
-                        <td style={{ padding: "10px 14px", color: T.text, textAlign: "center" }}>{eL.length}</td>
-                        <td style={{ padding: "10px 14px", color: T.text }}>{bio || "—"}</td>
-                        <td style={{ padding: "10px 14px", color: T.text, textAlign: "right" }}>{tCheptel ? tCheptel.toLocaleString() : "—"}</td>
-                        <td style={{ padding: "10px 14px", color: T.success, fontWeight: 700, textAlign: "right" }}>{tMat ? tMat.toLocaleString() : "—"}</td>
-                        <td style={{ padding: "10px 14px", color: T.accent, textAlign: "right" }}>{tDig ? tDig.toLocaleString() : "—"}</td>
-                        <td style={{ padding: "10px 14px", color: T.text, textAlign: "right" }}>{tHect || "—"}</td>
-                        <td style={{ padding: "10px 14px", color: T.text, textAlign: "right" }}>{tPhos ? tPhos.toLocaleString() : "—"}</td>
-                        <td style={{ padding: "10px 14px", color: T.text, textAlign: "center" }}>{activites.filter(a=>a.entity_id===e.id).length}</td>
-                        <td style={{ padding: "10px 14px", color: T.text, textAlign: "center" }}>{documents.filter(d=>d.entity_id===e.id).length}</td>
+                      <tr key={e.id} style={{ background: i%2===0?T.surface:"#fafaf9", cursor:"pointer" }}
+                        onMouseEnter={ev=>ev.currentTarget.style.background=T.accentBg}
+                        onMouseLeave={ev=>ev.currentTarget.style.background=i%2===0?T.surface:"#fafaf9"}
+                        onClick={()=>{setSelectedEntity(e);setPage("entities");}}>
+                        <td style={{padding:"10px 14px",color:T.accent,fontWeight:600}}>{displayName(e)}</td>
+                        <td style={{padding:"10px 14px"}}><Badge label={e.type} color={typeColor(e.type)} /></td>
+                        <td style={{padding:"10px 14px",color:T.text}}>{e.adresse_ville||"—"}</td>
+                        <td style={{padding:"10px 14px",color:T.text,textAlign:"center"}}>{eL.length}</td>
+                        <td style={{padding:"10px 14px",color:T.text}}>{bio||"—"}</td>
+                        <td style={{padding:"10px 14px",color:T.text,textAlign:"right"}}>{tCheptel?tCheptel.toLocaleString():"—"}</td>
+                        <td style={{padding:"10px 14px",color:T.success,fontWeight:700,textAlign:"right"}}>{tMat?tMat.toLocaleString():"—"}</td>
+                        <td style={{padding:"10px 14px",color:T.accent,textAlign:"right"}}>{tDig?tDig.toLocaleString():"—"}</td>
+                        <td style={{padding:"10px 14px",color:T.text,textAlign:"right"}}>{tHect||"—"}</td>
+                        <td style={{padding:"10px 14px",color:T.text,textAlign:"right"}}>{tPhos?tPhos.toLocaleString():"—"}</td>
+                        <td style={{padding:"10px 14px",color:T.text,textAlign:"center"}}>{activites.filter(a=>a.entity_id===e.id).length}</td>
+                        <td style={{padding:"10px 14px",color:T.text,textAlign:"center"}}>{documents.filter(d=>d.entity_id===e.id).length}</td>
                       </tr>
                     );
                   })}
                 </tbody>
                 <tfoot>
                   <tr style={{ background: "#eaf5ea", borderTop: `2px solid ${T.success}` }}>
-                    <td colSpan={6} style={{ padding: "10px 14px", color: T.success, fontWeight: 700, fontSize: 13 }}>TOTAUX</td>
-                    <td style={{ padding: "10px 14px", color: T.success, fontWeight: 900, fontSize: 14, textAlign: "right" }}>{lieux.reduce((s,l)=>s+(Number(l.tonnage_matiere)||0),0).toLocaleString()} t</td>
-                    <td style={{ padding: "10px 14px", color: T.accent, fontWeight: 900, fontSize: 14, textAlign: "right" }}>{lieux.reduce((s,l)=>s+(Number(l.tonnage_digestat)||0),0).toLocaleString()} t</td>
+                    <td colSpan={6} style={{padding:"10px 14px",color:T.success,fontWeight:700}}>TOTAUX</td>
+                    <td style={{padding:"10px 14px",color:T.success,fontWeight:900,textAlign:"right"}}>{lieux.reduce((s,l)=>s+(Number(l.tonnage_matiere)||0),0).toLocaleString()} t</td>
+                    <td style={{padding:"10px 14px",color:T.accent,fontWeight:900,textAlign:"right"}}>{lieux.reduce((s,l)=>s+(Number(l.tonnage_digestat)||0),0).toLocaleString()} t</td>
                     <td colSpan={4} />
                   </tr>
                 </tfoot>
@@ -1049,9 +1293,9 @@ export default function App() {
         )}
       </div>
 
-      {showEntityForm && (
+      {showEntityForm && canEdit(role) && (
         <Modal title={editingEntity ? "Modifier l'entité" : "Nouvelle entité"} onClose={() => { setShowEntityForm(false); setEditingEntity(null); }} wide>
-          <EntityForm initial={editingEntity} onSave={saveEntity} onClose={() => { setShowEntityForm(false); setEditingEntity(null); }} />
+          <EntityForm initial={editingEntity} onSave={saveEntity} onClose={() => { setShowEntityForm(false); setEditingEntity(null); }} profiles={profiles} />
         </Modal>
       )}
     </div>
